@@ -7,7 +7,6 @@ import {
   Alert,
   ScrollView
 } from 'react-native';
-// Quita la importación de lucide y usa react-native-vector-icons:
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import { ParkingSpot, VehicleEntry } from './types';
@@ -41,7 +40,6 @@ export default function App() {
     };
 
     setVehicles((prev) => [...prev, newVehicle]);
-
     setSpots((prev) =>
       prev.map((spot) =>
         spot.id === selectedSpot.id
@@ -49,7 +47,6 @@ export default function App() {
           : spot
       )
     );
-
     setSelectedSpot(null);
   };
 
@@ -63,7 +60,7 @@ export default function App() {
       )
     );
 
-    // Liberar plaza
+    // Liberar la plaza
     setSpots((prev) =>
       prev.map((spot) =>
         spot.currentVehicle === vehicleId
@@ -77,34 +74,33 @@ export default function App() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        {/* Icono de parking usando MaterialIcons */}
+        {/* Ícono de parking usando MaterialIcons */}
         <Icon name="local-parking" size={32} color="#fff" />
         <Text style={styles.headerTitle}>Gestión de Parking</Text>
       </View>
 
-      {/* Contenido principal (scroll si deseas) */}
+      {/* Contenido principal en columna */}
       <ScrollView contentContainerStyle={styles.mainContent}>
-        {/* Columna izquierda: Grid de plazas */}
-        <View style={styles.leftColumn}>
-          <Text style={styles.sectionTitle}>Estado del Parking</Text>
-          <ParkingGrid spots={spots} onSpotClick={setSelectedSpot} />
+        {/* Título y cuadrícula de plazas */}
+        <Text style={styles.sectionTitle}>Estado del Parking</Text>
+        <ParkingGrid spots={spots} onSpotClick={setSelectedSpot} />
+
+        {/* Tarjeta para registrar vehículo / Seleccionar plaza */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>
+            {selectedSpot && !selectedSpot.isOccupied
+              ? `Registrar vehículo - Plaza ${selectedSpot.number}`
+              : 'Seleccione una plaza'}
+          </Text>
+
+          {/* Solo muestra el formulario si se ha seleccionado una plaza libre */}
+          {selectedSpot && !selectedSpot.isOccupied && (
+            <VehicleForm onSubmit={handleVehicleEntry} />
+          )}
         </View>
 
-        {/* Columna derecha: Form + Activos */}
-        <View style={styles.rightColumn}>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>
-              {selectedSpot && !selectedSpot.isOccupied
-                ? `Registrar vehículo - Plaza ${selectedSpot.number}`
-                : 'Seleccione una plaza'}
-            </Text>
-            {selectedSpot && !selectedSpot.isOccupied && (
-              <VehicleForm onSubmit={handleVehicleEntry} />
-            )}
-          </View>
-
-          <ActiveVehicles vehicles={vehicles} onCheckout={handleVehicleExit} />
-        </View>
+        {/* Lista de vehículos activos */}
+        <ActiveVehicles vehicles={vehicles} onCheckout={handleVehicleExit} />
       </ScrollView>
     </View>
   );
@@ -127,17 +123,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
+  // Aquí la magia: flexDirection en 'column' (por defecto en RN) para que se apilen verticalmente
   mainContent: {
     padding: 16,
-    flexDirection: 'row',
-  },
-  leftColumn: {
-    flex: 2,
-    marginRight: 16,
-  },
-  rightColumn: {
-    flex: 1,
-    justifyContent: 'flex-start',
   },
   sectionTitle: {
     fontSize: 18,
@@ -146,10 +134,11 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#fff',
+    marginTop: 16,
     marginBottom: 16,
     borderRadius: 8,
     padding: 8,
-    elevation: 2,
+    elevation: 2, // Sombra en Android
   },
   cardTitle: {
     fontSize: 16,
