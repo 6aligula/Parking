@@ -7,6 +7,7 @@ import {
   Alert,
   ScrollView
 } from 'react-native';
+import axios from 'axios';  // <--- Importamos axios
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import { ParkingSpot, VehicleEntry } from './types';
@@ -14,7 +15,6 @@ import { ParkingGrid } from './components/ParkingGrid';
 import { VehicleForm } from './components/VehicleForm';
 import { ActiveVehicles } from './components/ActiveVehicles';
 
-// Inicializar espacios de estacionamiento
 const initialSpots: ParkingSpot[] = Array.from({ length: 20 }, (_, i) => ({
   id: `spot-${i + 1}`,
   number: `${i + 1}`,
@@ -27,27 +27,51 @@ export default function App() {
   const [vehicles, setVehicles] = useState<VehicleEntry[]>([]);
   const [selectedSpot, setSelectedSpot] = useState<ParkingSpot | null>(null);
 
-  const handleVehicleEntry = (vehicleData: Partial<VehicleEntry>) => {
+  // URL de tu API Flask (ajusta a tu localhost:puerto o dominio)
+  const API_URL = 'http://192.168.1.180:6000/api/vehicles';
+  // En Android Emulator, "localhost" no funciona; se usa "10.0.2.2" para apuntar al host
+
+  const handleVehicleEntry = async (vehicleData: Partial<VehicleEntry>) => {
     if (!selectedSpot) {
       Alert.alert('Por favor seleccione una plaza de parking');
       return;
     }
 
+    // Construimos el objeto VehicleEntry que queremos enviar
     const newVehicle: VehicleEntry = {
       ...vehicleData as VehicleEntry,
       id: vehicleData.id || `vehicle-${Date.now()}`,
       parkingSpot: selectedSpot.number,
     };
 
-    setVehicles((prev) => [...prev, newVehicle]);
-    setSpots((prev) =>
-      prev.map((spot) =>
-        spot.id === selectedSpot.id
-          ? { ...spot, isOccupied: true, currentVehicle: newVehicle.id }
-          : spot
-      )
-    );
-    setSelectedSpot(null);
+    try {
+      // 1) Enviamos los datos a tu backend Flask
+      const response = await axios.post(API_URL, {
+        plate: newVehicle.plate,
+        vehicleType: newVehicle.vehicleType,
+        entryTime: newVehicle.entryTime,
+        status: newVehicle.status,
+        parkingSpot: newVehicle.parkingSpot
+      });
+      console.log('Respuesta del servidor:', response.data);
+
+      // 2) Si todo va bien en el backend, actualizamos el estado local
+      setVehicles((prev) => [...prev, newVehicle]);
+      setSpots((prev) =>
+        prev.map((spot) =>
+          spot.id === selectedSpot.id
+            ? { ...spot, isOccupied: true, currentVehicle: newVehicle.id }
+            : spot
+        )
+      );
+      setSelectedSpot(null);
+
+      Alert.alert('Registro exitoso', '¡El vehículo se registró correctamente!');
+
+    } catch (error) {
+      console.error('Error al enviar datos al servidor:', error);
+      Alert.alert('Error', 'No se pudo registrar el vehículo en el backend');
+    }
   };
 
   const handleVehicleExit = (vehicleId: string) => {
@@ -60,7 +84,7 @@ export default function App() {
       )
     );
 
-    // Liberar la plaza
+    // Liberar plaza
     setSpots((prev) =>
       prev.map((spot) =>
         spot.currentVehicle === vehicleId
@@ -74,32 +98,25 @@ export default function App() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        {/* Ícono de parking usando MaterialIcons */}
         <Icon name="local-parking" size={32} color="#fff" />
         <Text style={styles.headerTitle}>Gestión de Parking</Text>
       </View>
 
-      {/* Contenido principal en columna */}
       <ScrollView contentContainerStyle={styles.mainContent}>
-        {/* Título y cuadrícula de plazas */}
         <Text style={styles.sectionTitle}>Estado del Parking</Text>
         <ParkingGrid spots={spots} onSpotClick={setSelectedSpot} />
 
-        {/* Tarjeta para registrar vehículo / Seleccionar plaza */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
             {selectedSpot && !selectedSpot.isOccupied
               ? `Registrar vehículo - Plaza ${selectedSpot.number}`
               : 'Seleccione una plaza'}
           </Text>
-
-          {/* Solo muestra el formulario si se ha seleccionado una plaza libre */}
           {selectedSpot && !selectedSpot.isOccupied && (
             <VehicleForm onSubmit={handleVehicleEntry} />
           )}
         </View>
 
-        {/* Lista de vehículos activos */}
         <ActiveVehicles vehicles={vehicles} onCheckout={handleVehicleExit} />
       </ScrollView>
     </View>
@@ -109,10 +126,10 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f3f4f6', // gray-100
+    backgroundColor: '#f3f4f6',
   },
   header: {
-    backgroundColor: '#2563eb', // blue-600
+    backgroundColor: '#2563eb',
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
@@ -123,7 +140,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
-  // Aquí la magia: flexDirection en 'column' (por defecto en RN) para que se apilen verticalmente
   mainContent: {
     padding: 16,
   },
@@ -138,7 +154,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 8,
     padding: 8,
-    elevation: 2, // Sombra en Android
+    elevation: 2,
   },
   cardTitle: {
     fontSize: 16,
